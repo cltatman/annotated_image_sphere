@@ -10,8 +10,13 @@ var camera = (function build_camera() {
   var near_clip = 0.1;
   var far_clip = 1000;
 
-  return new THREE.PerspectiveCamera(fov, aspect_ratio, near_clip, far_clip);
+  var new_camera = new THREE.PerspectiveCamera(fov, aspect_ratio, near_clip, far_clip);
+  new_camera.position.z = 1;
+
+  return new_camera;
 })();
+
+var camera_controls = new THREE.OrbitControls(camera, renderer.domElement);
 
 var sphere_mesh = undefined;
 
@@ -20,6 +25,17 @@ var load_image_sphere = function (image) {
 };
 
 var start_scene_for_image = function (texture) {
+  { // setup camera controls
+    camera_controls.enablePan = false;
+    camera_controls.enableZoom = false;
+    camera_controls.enableDamping = true;
+    camera_controls.dampingFactor = 0.05;
+    camera_controls.rotateSpeed = 0.05;
+
+    camera_controls.minPolarAngle = Math.PI * 0.25;
+    camera_controls.maxPolarAngle = Math.PI * 0.75;
+  }
+
   { // setup the sphere mesh & add to scene
     var geometry = new THREE.SphereGeometry(100, 32, 32);
     var material = new THREE.MeshBasicMaterial({ map: texture });
@@ -40,8 +56,7 @@ var start_scene_for_image = function (texture) {
 var render_scene = function render_scene() {
   requestAnimationFrame(render_scene);
   renderer.render(scene, camera);
-
-  sphere_mesh.rotation.y += 0.001;
+  camera_controls.update();
 };
 
 
