@@ -11,17 +11,70 @@ var camera = (function build_camera() {
   var far_clip = 1000;
 
   var new_camera = new THREE.PerspectiveCamera(fov, aspect_ratio, near_clip, far_clip);
-  new_camera.position.z = 1;
+  new_camera.position.z = 0.1;
 
   return new_camera;
 })();
 
 var camera_controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-var sphere_mesh = undefined;
+var dom_event_provider = new THREEx.DomEvents(camera, renderer.domElement);
 
-var load_image_sphere = function (image) {
-  new THREE.TextureLoader().load(image, start_scene_for_image);
+var sphere_mesh = undefined;
+var annotation_meshes = undefined;
+
+var annotation_content_container = document.getElementById('annotation-content');
+var focussed_annotation_mesh = undefined;
+
+var load_image_sphere = function (image, annotations) {
+  var texture_loader = new THREE.TextureLoader();
+
+  var image_texture = texture_loader.load(image);
+  var annotation_texture = texture_loader.load('annotation.png');
+
+  annotation_meshes = generate_annotation_meshes(annotations, annotation_texture);
+  annotation_meshes.forEach(function (mesh) { scene.add(mesh); });
+
+  start_scene_for_image(image_texture, annotation_texture);
+};
+
+var show_annotation_content = function (content, x, y) {
+  annotation_content_container.textContent = content;
+  var width = annotation_content_container.offsetWidth;
+  var height = annotation_content_container.offsetHeight;
+  var rendered_x = x - width * 0.5;
+  var rendered_y = y + height * 1.0;
+  annotation_content_container.style.transform = "translateX(" + rendered_x + "px) translateY(" + rendered_y + "px)";
+};
+
+var hide_annotation_content = function (annotation) {
+  annotation_content_container.style.transform = "translateX(-10000%)";
+};
+
+var generate_annotation_meshes = function (annotations, annotation_texture) {
+  return annotations.map(function (annotation) {
+    var material = new THREE.SpriteMaterial({ map: annotation_texture, transparent: true, opacity: 0.5 });
+    var new_annotation_mesh = new THREE.Sprite( material );
+
+    new_annotation_mesh.position.x = annotation.x;
+    new_annotation_mesh.position.y = annotation.y;
+    new_annotation_mesh.position.z = annotation.z;
+    new_annotation_mesh.scale.x = 1.4;
+    new_annotation_mesh.scale.y = 1.4;
+    new_annotation_mesh.data = { content: annotation.content };
+
+    dom_event_provider.addEventListener(new_annotation_mesh, 'mouseover', function (event) {
+      new_annotation_mesh.material.opacity = 0.8;
+      focussed_annotation_mesh = new_annotation_mesh;
+    });
+
+    dom_event_provider.addEventListener(new_annotation_mesh, 'mouseout', function () {
+      new_annotation_mesh.material.opacity = 0.5;
+      focussed_annotation_mesh = undefined;
+    });
+
+    return new_annotation_mesh;
+  });
 };
 
 var start_scene_for_image = function (texture) {
@@ -57,7 +110,31 @@ var render_scene = function render_scene() {
   requestAnimationFrame(render_scene);
   renderer.render(scene, camera);
   camera_controls.update();
+
+  if (focussed_annotation_mesh) {
+    var screen_position = focussed_annotation_mesh.position.clone().project(camera);
+
+    screen_position.x = (screen_position.x + 1) / 2 * viewport_width;
+    screen_position.y = -(screen_position.y - 1) / 2 * viewport_height;
+
+    focussed_annotation_mesh.material.opacity = 0.8;
+    console.log(screen_position);
+    show_annotation_content(focussed_annotation_mesh.data.content, screen_position.x, screen_position.y);
+  } else {
+    hide_annotation_content();
+  }
 };
 
+var annotations = [
+  { content: 'sliding doors', x: 10, y: 0, z: -5 },
+  { content: 'nice table', x: -10, y: -5, z: -8 },
+  { content: 'cool tree picture', x: -10, y: 0, z: -12 },
+  { content: 'nice door', x: -1.8, y: 0, z: -12 },
+  { content: 'fancy walkway', x: 20, y: 0, z: 7 },
+  { content: 'hammock things', x: -13, y: -2, z: 1 },
+  { content: 'cool pool', x: -22, y: -5, z: -3 },
+  { content: 'thirsty plants', x: -3, y: -1, z: 6 },
+  { content: 'patio lights', x: -6, y: 5, z: -3 }
+];
 
-load_image_sphere('patio.jpg');
+load_image_sphere('patio.jpg', annotations);
