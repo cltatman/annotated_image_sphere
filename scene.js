@@ -46,7 +46,7 @@ var show_annotation_content = function (content, x, y) {
   var width = annotation_content_container.offsetWidth;
   var height = annotation_content_container.offsetHeight;
   var rendered_x = x - width * 0.5;
-  var rendered_y = y + height * 1.0;
+  var rendered_y = y + height * 0.9;
   annotation_content_container.style.transform = "translateX(" + rendered_x + "px) translateY(" + rendered_y + "px)";
 };
 
